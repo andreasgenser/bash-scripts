@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+BRANCH=$1
+
+if [ -z ${BRANCH} ]
+then
+  echo "Usage $0 <REMOTE-BRANCH-WITHOUT-ORIGIN-PREFIX>"
+  exit 1
+fi
+
+if [ ${BRANCH} == "master" ]
+then
+  echo "We won't delete master branch :)"
+  exit 0
+fi
+
+
+find . -mindepth 1 -maxdepth 1 -type d -print0 | while read -d $'\0' folder
+do
+  git -C $folder branch -a | grep "remotes/origin/${BRANCH}" > /dev/null 2>&1
+  if [ $? -ne 0 ]
+  then
+    # no branch was found
+    continue
+  fi
+  echo "Deleting remote branch ${BRANCH}..."
+  git -C $folder push origin --delete ${BRANCH}	  
+  echo "Done."
+
+  # switch branch if necessary
+  CURRENT_BRANCH=$(git -C $folder rev-parse --abbrev-ref HEAD)
+  if [ ${CURRENT_BRANCH} == ${BRANCH} ]
+  then
+    echo "Current branch is ${CURRENT_BRANCH}, switching to master branch"
+    git -C $folder checkout master
+  fi
+  echo "Deleting local branch ${BRANCH}..."
+  git -C $folder branch --delete ${BRANCH}
+  echo "Done."
+done
